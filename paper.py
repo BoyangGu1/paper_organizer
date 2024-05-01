@@ -1,10 +1,10 @@
 import os
 import re
-from typing import Optional
+from typing import Optional, NoReturn
 
 import pandas as pd
 
-from .CONSTANT import *
+from .CONSTANT import safe_categories, safe_attrs, possible_entries, required_fields, optional_fields
 
 
 class Paper():
@@ -15,18 +15,18 @@ class Paper():
                  bibtex: Optional[str] = None) -> None:
         
         # link paper pdf
-        self.paper_loc: str = loc + 'papers' + str(paper_id) + '.pdf'
+        self.paper_loc: str = loc + '\\papers\\' + str(paper_id) + '_registered.pdf'
         if not os.path.exists(self.paper_loc):
             raise ValueError(f'{paper_id}.pdf is not in the {loc} folder.')
 
         # link csv to Paper object data storage
-        self.datasave_loc: str = loc + 'data' + str(paper_id) + '.csv'
+        self.datasave_loc: str = loc + '\\data\\' + str(paper_id) + '.csv'
         if not os.path.exists(self.datasave_loc):
             df = pd.DataFrame([], columns=['attribute name', 'attribute data'])
             df.to_csv(self.datasave_loc, index=False)
 
         # link txt for notes
-        self.notes_loc: str = loc + 'notes' + str(paper_id) + '.txt'
+        self.notes_loc: str = loc + '\\notes\\' + str(paper_id) + '.txt'
         if not os.path.exists(self.notes_loc):
             with open(self.notes_loc, 'w'):
                 pass
@@ -41,7 +41,7 @@ class Paper():
         self.relations: list[list[str]] = []
         self.update_notes()
 
-    def set_bibtex(self, bibtex: str):
+    def set_bibtex(self, bibtex: str) -> None:
         if self.bibtex is not None:
             print(f'Warning, bibtex for paper {self.paper_id} has been overwrited. The while object has been re-initialized.')
         self.bibtex = bibtex
@@ -49,9 +49,9 @@ class Paper():
         self.active_attrs = set(['paper_id', 'bibtex'])
         self._bibtex2attr()
 
-    def _bibtex2attr(self):
+    def _bibtex2attr(self) -> None:
         entry_pattern = re.compile(r'@(?P<entry_type>\w+)\s*{\s*(?P<key>[^,]+),\s*(?P<content>.+)\s*}\s*,?', re.DOTALL)
-        field_pattern = re.compile(r'\s*(?!,\n)(?P<field>[^=]+)\s*=\s*{(?P<value>[^{}]+)}')
+        field_pattern = re.compile(r'\s*(?!,\r\n)(?!,\n)(?P<field>[^=]+)\s*=\s*{(?P<value>[^{}]+)}')
 
         assert self.bibtex is not None
         match = entry_pattern.findall(self.bibtex)[0]
@@ -59,9 +59,32 @@ class Paper():
         fields = field_pattern.findall(match[2])
         for field, value in fields:
             entry[field.strip()] = value.strip()
-        return entry
+
+        if entry['entry_type'] in possible_entries:
+            self.entry: str = entry['entry_type']
+            self.active_attrs.add('entry')
+            self.key: str = entry['key']
+            self.active_attrs.add('key')
+            check_list = []
+            for field, value in entry.items():
+                if field not in ['entry_type', 'key']:
+                    if field in required_fields[self.entry]:
+                        setattr(self, field, value)
+                        self.active_attrs.add(field)
+                        check_list.append(field)
+                    elif field in optional_fields[self.entry]:
+                        setattr(self, field, value)
+                        self.active_attrs.add(field)
+                    else:
+                        raise ValueError(f"{field} is not a valid field type in bibtex.")
+                    
+            remaining_required_fields = set(required_fields[self.entry]) - set(check_list)
+            if remaining_required_fields != set():
+                raise ValueError(f"{remaining_required_fields} is not included in the bibtex.")
+        else:
+            raise ValueError(f"{entry['entry_type']} is not a valid entry type in bibtex.")
     
-    def check_bibtex_exist(self):
+    def check_bibtex_exist(self) -> None:
         if self.bibtex is None:
             raise ValueError('You have not assigned a bibtex yet. Use .set_bibtex() to set the bibtex first.')
 
@@ -74,25 +97,27 @@ class Paper():
     def set_category(self, cat: str) -> None:
         self.check_bibtex_exist()
         # paper category like survey
-        safe_cat = ['survey']
-        if cat in safe_cat:
+        if cat in safe_categories:
             self.category = cat
             self.active_attrs.add('category')
         else:
-            raise ValueError(f'{cat} is not a valid cateogry type. Please use category from {safe_cat}')
+            raise ValueError(f'{cat} is not a valid cateogry type. Please use category from {safe_categories}')
 
     def add_keyword(self, keyword: str) -> None:
         self.check_bibtex_exist()
-        if not keyword in self.keywords:
+        if keyword not in self.keywords:
             self.keywords.append(keyword)
         else:
-            print(f'No Action: the keyword {keyword} has already been added to paper: {self.name}.')
+            print(f'No Action: the keyword {keyword} has already been added to paper: {self.title}.')
         self.active_attrs.add('keywords')
     
     def add_relation(self, another_paper: str | int, relation: str, note: str) -> None:
         self.check_bibtex_exist()
         # relation should not include any underscore (_)
-        self.relations.append([str(another_paper), relation, note])
+        if [str(another_paper), relation, note] not in self.relations:
+            self.relations.append([str(another_paper), relation, note])
+        else:
+            print(f'No Action: the relation from {self.paper_id} to {another_paper} with relation type `{relation}` has already been added to paper: {self.title}.')
         self.active_attrs.add('relations')
     
     def data_save(self) -> None:
@@ -124,13 +149,12 @@ class Paper():
     
     def data_load(self) -> None:
         # replace class data with local csv data, the opposite of data_update
-        safe_attr_list = ['name', 'bibtex', 'keywords', 'category']
         self.active_attrs = set()
         df = pd.read_csv(self.datasave_loc)
         for _, row in df.iterrows():
             attr = row['attribute name']
             info = row['attribute data']
-            assert attr in safe_attr_list, f'{attr} is not a legal property for a paper'
+            assert attr in safe_attrs, f'{attr} is not a legal property for a paper'
             if attr == 'keywords':
                 self.keywords = info.split(',')
             elif attr == 'relations':
@@ -139,6 +163,8 @@ class Paper():
             else:
                 setattr(self, attr, info)
             self.active_attrs.add(attr)
+        #TODO
+        self._bibtex2attr()
 
     def show_notes(self) -> None:
         self.update_notes()
@@ -151,7 +177,7 @@ class Paper():
     def __str__(self) -> str:
         self.check_bibtex_exist()
 
-        info = f"Paper Title: {self.paper_id}: {'[' + self.category + ']' if self.category else ''}{self.name}\n"
+        info = f"Paper Title: {self.paper_id}: {'[' + self.category + ']' if self.category else ''}{self.title}\n"
 
         if self.keywords != []:
             info += "Keywords: " + ', '.join(self.keywords) + '\n'
