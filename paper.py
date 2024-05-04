@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Optional, NoReturn
+from typing import Optional
 
 import pandas as pd
 
@@ -45,7 +45,6 @@ class Paper():
         if self.bibtex is not None:
             print(f'Warning, bibtex for paper {self.paper_id} has been overwrited. The while object has been re-initialized.')
         self.bibtex = bibtex
-        self.active_attrs.add('bibtex')
         self.active_attrs = set(['paper_id', 'bibtex'])
         self._bibtex2attr()
 
@@ -110,6 +109,13 @@ class Paper():
         else:
             print(f'No Action: the keyword {keyword} has already been added to paper: {self.title}.')
         self.active_attrs.add('keywords')
+
+    def del_keyword(self, keyword: str) -> None:
+        self.check_bibtex_exist()
+        if keyword in self.keywords:
+            self.keywords.remove(keyword)
+        else:
+            print(f'No Action: the keyword {keyword} is not an keyword of the paper: {self.title}.')
     
     def add_relation(self, another_paper: str | int, relation: str, note: str) -> None:
         self.check_bibtex_exist()
@@ -149,7 +155,7 @@ class Paper():
     
     def data_load(self) -> None:
         # replace class data with local csv data, the opposite of data_update
-        self.active_attrs = set()
+        self.active_attrs = set(['paper_id'])
         df = pd.read_csv(self.datasave_loc)
         for _, row in df.iterrows():
             attr = row['attribute name']
@@ -163,8 +169,6 @@ class Paper():
             else:
                 setattr(self, attr, info)
             self.active_attrs.add(attr)
-        #TODO
-        self._bibtex2attr()
 
     def show_notes(self) -> None:
         self.update_notes()
@@ -190,6 +194,6 @@ class Paper():
             relations_info = ''
             for relation, another_paper, note in self.relations:
                 relations_info += f'{relation} to {another_paper}: {note}\n'
-            info += "Relations:\n" + relations_info
+            info += "\nRelations:\n" + relations_info
 
         return info

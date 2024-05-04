@@ -1,8 +1,5 @@
 import os
 import glob
-from typing import Union, Type
-
-import pandas as pd
 
 from .paper import Paper
 
@@ -61,6 +58,10 @@ class Organizer():
         for pdf_name in unregistered_pdf_names:
             self.add_paper(pdf_name, False, summary=summary)
 
+    def set_paper_bibtex(self, paper_id: int, bibtex: str):
+        paper: Paper = self.paper_dict[paper_id]
+        paper.set_bibtex(bibtex)
+
     def add_category(self, indices: list[int] | int, category: str):
         if isinstance(indices, int):
             paper: Paper = self.paper_dict[indices]
@@ -74,15 +75,15 @@ class Organizer():
         for paper1_id, paper2_ids, mutual, relation_type, note in relations:
 
             if not isinstance(paper1_id, int):
-                raise ValueError(f'{paper1_id} is not of int type')
+                raise TypeError(f'{paper1_id} is not of int type')
             if not (isinstance(paper2_ids, int) or (isinstance(paper2_ids, list) and all(isinstance(item, int) for item in paper2_ids))):
-                raise ValueError(f'{paper2_ids} is not of int or list[int] type')
+                raise TypeError(f'{paper2_ids} is not of int or list[int] type')
             if not isinstance(mutual, bool):
-                raise ValueError(f'{mutual} is not of bool type')
+                raise TypeError(f'{mutual} is not of bool type')
             if not isinstance(relation_type, str):
-                raise ValueError(f'{relation_type} is not of str type')
+                raise TypeError(f'{relation_type} is not of str type')
             if not isinstance(note, str):
-                raise ValueError(f'{note} is not of str type')
+                raise TypeError(f'{note} is not of str type')
             
             paper1: Paper = self.paper_dict[paper1_id]
             if isinstance(paper2_ids, list):
@@ -102,14 +103,32 @@ class Organizer():
                 else:
                     paper2.add_relation(paper1_id, 'BE ' + relation_type, note)
 
-    def add_keyword(self, indices: list[int] | int, keyword: str):
+    def add_keyword(self, indices: list[int] | int, keywords: list[str] | str):
         if isinstance(indices, int):
             paper: Paper = self.paper_dict[indices]
-            paper.add_keyword(keyword)
+            if isinstance(keywords, list):
+                for keyword in keywords:
+                    paper.add_keyword(keyword)
+            else:
+                paper.add_keyword(keywords)
         else:
             for index in indices:
                 paper: Paper = self.paper_dict[index]
-                paper.add_keyword(keyword)
+                if isinstance(keywords, list):
+                    for keyword in keywords:
+                        paper.add_keyword(keyword)
+                else:
+                    paper.add_keyword(keywords)
+
+    def search_keyword(self, keyword: str) -> list[int]:
+        result_names = []
+        info = f'keyword serach for: {keyword}\n'
+        for name, paper in self.paper_dict.items():
+            if keyword in paper.keywords:
+                result_names.append(name)
+                info += f'{name}: {paper.title}\n'
+        print(info)
+        return result_names
 
     def data_save(self):
         for paper in self.paper_dict.values():
@@ -133,7 +152,7 @@ class Organizer():
     def __str__(self) -> str:
         info = ''
         for i in range(1, self.paper_no + 1):
-            info += f'{i}: Paper Title: {self.paper_dict[i].title}\n'
+            info += f"{i}: Paper Title: {self.paper_dict[i].title if 'bibtex' in self.paper_dict[i].active_attrs else None}\n"
             if not 'bibtex' in self.paper_dict[i].active_attrs:
                 info += f'Warning: This paper does not have a bibtex.\n'
         return info

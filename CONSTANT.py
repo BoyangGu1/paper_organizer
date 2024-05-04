@@ -31,4 +31,4 @@ all_items = set()
 for fields_dict in (required_fields, optional_fields):
     for field_list in fields_dict.values():
         all_items.update(field_list)
-safe_attrs = ['bibtex', 'keywords', 'category', 'relations', 'entry', 'key'] + list(all_items)
+safe_attrs = ['bibtex', 'keywords', 'category', 'relations', 'entry', 'key', 'paper_id'] + list(all_items)
