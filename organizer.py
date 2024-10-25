@@ -119,6 +119,23 @@ class Organizer():
                         paper.add_keyword(keyword)
                 else:
                     paper.add_keyword(keywords)
+    
+    def del_keyword(self, indices: list[int] | int, keywords: list[str] | str):
+        if isinstance(indices, int):
+            paper: Paper = self.paper_dict[indices]
+            if isinstance(keywords, list):
+                for keyword in keywords:
+                    paper.del_keyword(keyword)
+            else:
+                paper.del_keyword(keywords)
+        else:
+            for index in indices:
+                paper: Paper = self.paper_dict[index]
+                if isinstance(keywords, list):
+                    for keyword in keywords:
+                        paper.del_keyword(keyword)
+                else:
+                    paper.del_keyword(keywords)
 
     def search_keyword(self, keyword: str) -> list[int]:
         result_names = []
@@ -129,6 +146,20 @@ class Organizer():
                 info += f'{name}: {paper.title}\n'
         print(info)
         return result_names
+    
+    def get_all_keyword(self) -> list[str]:
+        keyword_list = []
+        for name, paper in self.paper_dict.items():
+            keyword_list.extend(paper.keywords)
+        return list(set(keyword_list))
+    
+    def rewrite_keyword(self, old_name: str, new_name: str):
+        info = f'rename keyword {old_name} to {new_name}\n'
+        for name, paper in self.paper_dict.items():
+            if old_name in paper.keywords:
+                self.paper_dict[name].keywords = [keyword if keyword != old_name else new_name for keyword in self.paper_dict[name].keywords]
+                info += f'{name}: {paper.title}\n'
+        print(info)
 
     def data_save(self):
         for paper in self.paper_dict.values():
@@ -140,13 +171,68 @@ class Organizer():
             assert isinstance(paper, Paper)
             paper.data_load()
 
-    def print_info(self):
+    def get_citation_key(self, indices: int | list[int]) -> str:
+        if isinstance(indices, int):
+            return self.paper_dict[indices].key
+        else:
+            key_list = []
+            for index in indices:
+                key_list.append(self.paper_dict[index].key)
+            return ', '.join(key_list)
+        
+    def get_name_from_citation_key(self, keys: str | list[str]) -> int | list[int]:
+        if isinstance(keys, str):
+            found_name = None
+            for name, paper in self.paper_dict.items():
+                if paper.key == keys:
+                    found_name = int(paper.paper_id)
+                    break
+            if found_name is not None:
+                return found_name
+            else:
+                raise ValueError(f'{found_name} is not a valid key.')
+        else:
+            name_list = []
+            for key in keys:
+                found_name = None
+                for name, paper in self.paper_dict.items():
+                    if paper.key == key:
+                        found_name = int(paper.paper_id)
+                        break
+                if found_name is not None:
+                    name_list.append(found_name)
+                else:
+                    raise ValueError(f'{found_name} is not a valid key.')
+            return name_list
+        
+    def get_citation_bib(self) -> str:
+        bib = ''
+        for name, paper in self.paper_dict.items():
+            assert paper.bibtex is not None
+            bib += paper.bibtex + '\n'
+
+        return bib
+
+    def print_info(self, indices: list[int] | int | None = None):
         info = ''
-        for i in range(1, self.paper_no + 1):
-            info += f'{i}: \n{self.paper_dict[i].__str__()}'
-            if not 'bibtex' in self.paper_dict[i].active_attrs:
+
+        if indices is None:
+            for i in range(1, self.paper_no + 1):
+                info += f'{i}: \n{self.paper_dict[i].__str__()}'
+                if not 'bibtex' in self.paper_dict[i].active_attrs:
+                    info += f'Warning: This paper does not have a bibtex.\n'
+                info += '\n\n'
+        elif isinstance(indices, int):
+            info += f'{indices}: \n{self.paper_dict[indices].__str__()}'
+            if not 'bibtex' in self.paper_dict[indices].active_attrs:
                 info += f'Warning: This paper does not have a bibtex.\n'
             info += '\n\n'
+        else:
+            for i in indices:
+                info += f'{i}: \n{self.paper_dict[i].__str__()}'
+                if not 'bibtex' in self.paper_dict[i].active_attrs:
+                    info += f'Warning: This paper does not have a bibtex.\n'
+                info += '\n\n'
         print(info)
 
     def __str__(self) -> str:

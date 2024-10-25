@@ -32,6 +32,7 @@ class Paper():
                 pass
         
         self.paper_id: str | int = paper_id
+        self.title: Optional[str] = None
         self.bibtex: Optional[str] = None
         self.active_attrs: set[str] = set(['paper_id'])
         if bibtex is not None:

@@ -5,7 +5,7 @@ possible_entries = [
 ]
 
 required_fields = {
-    'article': ['author', 'title', 'journal', 'year'],
+    'article': ['author', 'title', 'year'],
     'book': ['author', 'title', 'publisher', 'year'],
     'inbook': ['author', 'title', 'chapter', 'pages', 'publisher', 'year'],
     'inproceedings': ['author', 'title', 'booktitle', 'year'],
@@ -16,7 +16,7 @@ required_fields = {
 }
 
 optional_fields = {
-    'article': ['volume', 'number', 'pages', 'month', 'note', 'key', 'publisher'],
+    'article': ['journal', 'volume', 'number', 'pages', 'month', 'note', 'key', 'publisher'],
     'book': ['volume', 'number', 'series', 'address', 'edition', 'month', 'note', 'key'],
     'inbook': ['volume', 'number', 'series', 'type', 'address', 'edition', 'month', 'note', 'key'],
     'inproceedings': ['editor', 'volume', 'number', 'series', 'pages', 'address', 'month', 'organization', 'publisher', 'note', 'key'],
